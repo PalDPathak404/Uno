@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modern UNO — Fully Functional</title>
+<style>
+:root {
+  --bg: #071026;
+  --panel: #071522cc;
+  --accent: #7c5cff;
+  --muted: #9fb0cf;
+  --white: #e6eef8;
+  --glow: rgba(124,92,255,0.4);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: Inter, system-ui, sans-serif; background: linear-gradient(180deg,#041022 0%,#071026 100%); color: var(--white); }
+#startScreen { position: fixed; inset:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,rgba(2,6,23,0.85),transparent); z-index:100; transition: opacity 0.5s ease; }
+#startCard { background: var(--panel); padding:26px; border-radius:14px; min-width:360px; box-shadow:0 12px 36px rgba(2,6,23,0.6); text-align:center; }
+#startCard h2 { margin:0 0 12px 0; }
+#playerNames { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--white); font-size:16px; }
+#startBtn { margin-top:12px; padding:10px; border-radius:10px; border:none; background:var(--accent); color:white; font-weight:700; cursor:pointer; font-size:16px; }
+#gameBoard { display:grid; grid-template-columns:180px 1fr 180px; grid-template-rows:140px 1fr 140px; gap:12px; min-height:100vh; padding:18px; opacity:0; transition: opacity 0.5s ease; }
+.zone { display:flex; align-items:center; justify-content:center; position: relative; }
+.zoneInner { background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:10px; border-radius:10px; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+#topZone { grid-column:2/3; grid-row:1/2; }
+#leftZone { grid-column:1/2; grid-row:2/3; }
+#centerZone { grid-column:2/3; grid-row:2/3; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+#rightZone { grid-column:3/4; grid-row:2/3; }
+#bottomZone { grid-column:2/3; grid-row:3/4; }
+.playerLabel { font-weight:700; margin-bottom:6px; }
+.backCard { width:44px; height:66px; border-radius:8px; background:linear-gradient(180deg,#0b1220,#061026); box-shadow:0 8px 20px rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; }
+.playerCount { margin-top:6px; color: var(--muted); font-size:13px; }
+#localHand { display:flex; gap:8px; align-items:flex-end; padding:10px; }
+.card { width:90px; height:130px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; box-shadow:0 12px 28px rgba(2,6,23,0.6); cursor:pointer; user-select:none; position:relative; transition: transform 0.2s ease; margin-right:6px; }
+.card .lbl { font-size:22px; pointer-events:none; }
+.red { background:linear-gradient(180deg,#ff7b7b,#ff3b3b); }
+.yellow { background:linear-gradient(180deg,#ffd48a,#ffb84a); color:#111; }
+.green { background:linear-gradient(180deg,#74f4a7,#1fbf6b); color:#07220f; }
+.blue { background:linear-gradient(180deg,#9dd7ff,#3b9eff); color:#04293f; }
+.wild { background:linear-gradient(180deg,#2d2a4a,#7c5cff); }
+#discardPile { width:100px; height:140px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-weight:800; }
+#drawPile { width:80px; height:120px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:700; }
+.pileRow { display:flex; gap:18px; align-items:center; }
+.turnInfo { margin-top:10px; color: var(--muted); font-weight:600; text-align:center; }
+#animLayer { position:fixed; inset:0; pointer-events:none; z-index:200; }
+.flyCard { position:absolute; width:78px; height:110px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; color:#fff; z-index:1000; transition: all 0.42s cubic-bezier(.2,.9,.3,1); }
+.shake { animation: shake 0.4s; }
+@keyframes shake {0%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-6px)}100%{transform:translateX(0)}}
+.highlight { outline:3px solid var(--glow); box-shadow:0 10px 30px rgba(124,92,255,0.06); }
+.glowBorder { box-shadow:0 0 20px var(--glow) inset; border-radius:12px; }
+.controls { display:flex; gap:8px; margin-top:8px; }
+.btn { padding:8px 10px; border-radius:8px; border:none; background:#20304a; color:white; cursor:pointer; font-size:14px; }
+.chainHint { margin-top:8px; color: var(--muted); font-size:13px; text-align:center; }
+@media (max-width:900px){#gameBoard{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}#leftZone,#rightZone{display:none}}
+</style>
+</head>
+<body>
+<div id="startScreen">
+  <div id="startCard">
+    <h2>Enter player names (comma separated, 3+ players)</h2>
+    <input id="playerNames" placeholder="Alice,Bob,Charlie">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="startBtn">Start Game</button>
+    </div>
+    <div style="margin-top:12px;color:var(--muted);font-size:13px">Chain + stacking +2/+4. Drag or click cards. Smart AI included.</div>
+  </div>
+</div>
+<div id="gameBoard">
+  <div id="topZone" class="zone"><div class="zoneInner"><div class="playerLabel" id="labelTop">Top</div><div id="topBacks"></div><div class="playerCount" id="countTop"></div></div></div>
+  <div id="leftZone" class="zone"><div class="zoneInner"><div class="playerLabel" id="labelLeft">Left</div><div id="leftBacks"></div><div class="playerCount" id="countLeft"></div></div></div>
+  <div id="centerZone" class="zone"><div class="zoneInner">
+    <div class="pileRow">
+      <div id="drawPile" title="Draw Pile">Draw</div>
+      <div id="discardPile">-</div>
+    </div>
+    <div class="turnInfo" id="turnInfo">Not started</div>
+    <div class="controls">
+      <button id="drawBtn" class="btn">Draw</button>
+      <button id="rulesBtn" class="btn">Rules</button>
+    </div>
+    <div class="chainHint" id="chainHint"></div>
+  </div></div>
+  <div id="rightZone" class="zone"><div class="zoneInner"><div class="playerLabel" id="labelRight">Right</div><div id="rightBacks"></div><div class="playerCount" id="countRight"></div></div></div>
+  <div id="bottomZone" class="zone"><div class="zoneInner">
+    <div class="playerLabel" id="labelBottom">You</div>
+    <div id="localHand" style="display:flex;flex-direction:column;align-items:center">
+      <div id="localHandRow" style="display:flex"></div>
+      <div class="playerCount" id="countBottom"></div>
+    </div>
+  </div></div>
+</div>
+<div id="animLayer"></div>
+<script>
+// ---------- Core Game Logic ----------
+const COLORS=['red','yellow','green','blue'], NUMBERS=['0','1','2','3','4','5','6','7','8','9'], SPECIALS=['skip','reverse','draw2'], WILDS=['wild','wild4'];
+function uid(n=6){return Math.random().toString(36).slice(2,n+2);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a;}
+function buildDeck(){const d=[];COLORS.forEach(c=>{NUMBERS.forEach(n=>{d.push({id:uid(),type:'number',color:c,value:n});if(n!=='0') d.push({id:uid(),type:'number',color:c,value:n});});SPECIALS.forEach(s=>{d.push({id:uid(),type:s,color:c});d.push({id:uid(),type:s,color:c});});});for(let i=0;i<4;i++){d.push({id:uid(),type:'wild'});d.push({id:uid(),type:'wild4'});}return shuffle(d);}
+class UnoGame{
+  constructor(names){
+    this.players=names.map((n,i)=>({id:i,name:n,hand:[],finished:false}));
+    this.current=0; this.direction=1; this.deck=buildDeck(); this.discard=[];
+    this.started=false; this.stackCount=0; this.stackType=null; this.init();
+  }
+  init(){
+    for(let r=0;r<7;r++) for(let p of this.players) p.hand.push(this.deck.pop());
+    let top; do{top=this.deck.pop()}while(top&&(top.type==='wild'||top.type==='wild4'));
+    this.discard.push(top||this.deck.pop());
+    this.started=true;
+    if(this.discard.length) this.resolveSpecialOnStart(this.discard[this.discard.length-1]);
+  }
+  resolveSpecialOnStart(card){
+    if(!card) return;
+    if(card.type==='skip') this.current=this.nextIndex(this.current);
+    if(card.type==='reverse') this.direction*=-1;
+    if(card.type==='draw2'){
+      const nxt=this.nextIndex(this.current); this.players[nxt].hand.push(this.deck.pop(),this.deck.pop());
+      this.current=this.nextIndex(this.current);
+    }
+  }
+  nextIndex(i){const n=this.players.length;return ((i+this.direction)%n+n)%n;}
+  canPlay(card,top,currentStack){
+    if(!card) return false;
+    if(currentStack&&currentStack.count>0){
+      if(currentStack.type==='draw2'&&card.type==='draw2') return true;
+      if(currentStack.type==='wild4'&&card.type==='wild4') return true;
+      return false;
+    }
+    if(card.type==='wild'||card.type==='wild4') return true;
+    if(top.type==='wild'&&top.chosenColor) return card.color===top.chosenColor;
+    if(card.color&&top.color&&card.color===top.color) return true;
+    if(card.type==='number'&&top.type==='number'&&card.value===top.value) return true;
+    if(card.type===top.type&&SPECIALS.includes(card.type)) return true;
+    return false;
+  }
+  playCard(pIndex,cardId,chosenColor){
+    const player=this.players[pIndex];
+    const idx=player.hand.findIndex(c=>c.id===cardId);
+    if(idx<0) return false;
+    const card=player.hand[idx];
+    const top=this.discard[this.discard.length-1];
+    if(!this.canPlay(card,top,{count:this.stackCount,type:this.stackType})) return false;
+    player.hand.splice(idx,1);
+    const played=Object.assign({},card);
+    if(played.type==='wild'||played.type==='wild4') played.chosenColor=chosenColor||COLORS[Math.floor(Math.random()*4)];
+    this.discard.push(played);
+    if(played.type==='draw2'){this.stackCount+=2;this.stackType='draw2';}
+    if(played.type==='wild4'){this.stackCount+=4;this.stackType='wild4';}
+    if(played.type==='skip') this.current=this.nextIndex(this.current);
+    if(played.type==='reverse'){if(this.players.length===2)this.current=this.nextIndex(this.current);else this.direction*=-1;}
+    if(player.hand.length===0) player.finished=true;
+    this.current=this.nextIndex(this.current);
+    return true;
+  }
+  drawCard(pIndex){if(this.deck.length===0)this.reshuffleFromDiscard(); const c=this.deck.pop(); this.players[pIndex].hand.push(c); return c;}
+  resolveStackOnPlayer(pIndex){
+    const player=this.players[pIndex]; if(this.stackCount===0) return false;
+    let matchIdx=-1;
+    if(this.stackType==='draw2') matchIdx=player.hand.findIndex(c=>c.type==='draw2');
+    if(this.stackType==='wild4') matchIdx=player.hand.findIndex(c=>c.type==='wild4');
+    if(matchIdx>=0){const matched=player.hand[matchIdx]; this.playCard(pIndex,matched.id,matched.type==='wild4'?COLORS[Math.floor(Math.random()*4)]:null); return 'stacked';}
+    for(let i=0;i<this.stackCount;i++){player.hand.push(this.deck.pop()||this.reshuffleFromDiscard()||{});}
+    this.stackCount=0;this.stackType=null; return 'drew';
+  }
+  reshuffleFromDiscard(){const top=this.discard.pop(); this.deck=shuffle(this.discard); this.discard=[top];}
+}
+// ---------- UI & Game Flow ----------
+const startBtn=document.getElementById('startBtn'), playerNamesInput=document.getElementById('playerNames'), startScreen=document.getElementById('startScreen'), gameBoard=document.getElementById('gameBoard'), animLayer=document.getElementById('animLayer'), drawPileEl=document.getElementById('drawPile'), discardPileEl=document.getElementById('discardPile'), topBacks=document.getElementById('topBacks'), leftBacks=document.getElementById('leftBacks'), rightBacks=document.getElementById('rightBacks'), localHandRow=document.getElementById('localHandRow'), countTop=document.getElementById('countTop'), countLeft=document.getElementById('countLeft'), countRight=document.getElementById('countRight'), countBottom=document.getElementById('countBottom'), turnInfo=document.getElementById('turnInfo'), drawBtn=document.getElementById('drawBtn'), rulesBtn=document.getElementById('rulesBtn'), chainHint=document.getElementById('chainHint'), labelTop=document.getElementById('labelTop'), labelLeft=document.getElementById('labelLeft'), labelRight=document.getElementById('labelRight'), labelBottom=document.getElementById('labelBottom');
+
+let game=null;
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function createBackCard(){const d=document.createElement('div');d.className='backCard';d.textContent='UNO';return d;}
+
+function startGame(names){
+  game=new UnoGame(names);
+  startScreen.style.opacity=0; setTimeout(()=>startScreen.style.display='none',500);
+  gameBoard.style.opacity=1; renderAll(); 
+  setTimeout(runAITurns,700);
+}
+
+startBtn.addEventListener('click',()=>{
+  const raw=playerNamesInput.value.trim();
+  const names=raw.split(',').map(s=>s.trim()).filter(Boolean);
+  if(names.length<3){alert('Enter at least 3 players');return;}
+  startGame(names);
+});
+
+// ---------- Render & UI ----------
+function renderAll(){
+  if(!game) return;
+  const p=game.players;
+
+  // Player Labels
+  labelTop.textContent=p[1]?p[1].name:'';
+  labelLeft.textContent=p[2]?p[2].name:'';
+  labelRight.textContent=p[3]?p[3].name:'';
+  labelBottom.textContent=p[0]?p[0].name:'You';
+
+  // Opponent cards
+  topBacks.innerHTML=''; leftBacks.innerHTML=''; rightBacks.innerHTML='';
+  if(p[1]) topBacks.appendChild(createBackCard());
+  if(p[2]) leftBacks.appendChild(createBackCard());
+  if(p[3]) rightBacks.appendChild(createBackCard());
+  countTop.textContent=p[1]?p[1].hand.length+' cards':'';
+  countLeft.textContent=p[2]?p[2].hand.length+' cards':'';
+  countRight.textContent=p[3]?p[3].hand.length+' cards':'';
+  countBottom.textContent=p[0]?p[0].hand.length+' cards':'';
+
+  // Local Hand
+  localHandRow.innerHTML='';
+  if(p[0]){p[0].hand.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='card '+(c.color||'wild'); 
+    el.dataset.id=c.id; el.dataset.type=c.type;
+    const lbl=c.type==='number'?c.value:(c.type==='draw2'?'+2':(c.type==='wild4'?'+4':c.type.toUpperCase()));
+    el.innerHTML=`<div class="lbl">${lbl}</div>`;
+    el.addEventListener('click',()=>onLocalCardClick(c,el));
+    el.draggable=true;
+    el.addEventListener('dragstart',ev=>ev.dataTransfer.setData('text/plain',c.id));
+    localHandRow.appendChild(el);
+  })}
+
+  // Discard pile
+  const topCard=game.discard[game.discard.length-1];
+  discardPileEl.textContent=topCard?(topCard.type==='number'?topCard.value:topCard.type.toUpperCase()):'-';
+  discardPileEl.className=''; if(topCard && topCard.color) discardPileEl.classList.add(topCard.color);
+  if(topCard && (topCard.type==='wild'||topCard.type==='wild4')) discardPileEl.classList.add('wild');
+  drawPileEl.textContent=game.deck.length;
+
+  turnInfo.innerHTML=`Turn: <b>${game.players[game.current].name}</b> — Direction: ${game.direction===1?'CW':'CCW'}`;
+  chainHint.textContent=game.stackCount>0?`Stack active: ${game.stackCount} (${game.stackType})`:'Chain mode: play multiple cards matching color or number.';
+}
+
+// ---------- Card Play & Animation ----------
+function animateCardToDiscard(cardEl, callback){
+  const rect=cardEl.getBoundingClientRect();
+  const target=discardPileEl.getBoundingClientRect();
+  const clone=cardEl.cloneNode(true);
+  clone.style.position='fixed'; clone.style.left=rect.left+'px'; clone.style.top=rect.top+'px';
+  clone.style.margin=0; clone.style.zIndex=1000; clone.style.transition='all 0.5s ease';
+  animLayer.appendChild(clone);
+  requestAnimationFrame(()=>{
+    clone.style.left=target.left+'px'; clone.style.top=target.top+'px';
+    clone.style.width=target.width+'px'; clone.style.height=target.height+'px';
+  });
+  clone.addEventListener('transitionend',()=>{animLayer.removeChild(clone); if(callback) callback();});
+}
+
+function onLocalCardClick(card, el){
+  if(game.current!==0){alert('Not your turn'); return;}
+  const top=game.discard[game.discard.length-1];
+  if(!game.canPlay(card,top,{count:game.stackCount,type:game.stackType})){alert('Cannot play this card'); return;}
+  let chosen=null; if(card.type==='wild'||card.type==='wild4') chosen=prompt('Choose color: red,blue,green,yellow','red');
+  animateCardToDiscard(el,()=>{
+    game.playCard(0,card.id,chosen);
+    renderAll();
+    setTimeout(runAITurns,500);
+  });
+}
+
+// ---------- Draw Button ----------
+drawBtn.addEventListener('click',()=>{
+  if(game.current!==0){alert('Not your turn'); return;}
+  const c=game.drawCard(0);
+  renderAll();
+});
+
+// ---------- AI Logic ----------
+async function runAITurns(){
+  while(game.current!==0){
+    const p=game.players[game.current];
+    await sleep(800);
+    const top=game.discard[game.discard.length-1];
+    let playable=p.hand.find(c=>game.canPlay(c,top,{count:game.stackCount,type:game.stackType}));
+    if(playable){
+      game.playCard(game.current,playable.id,playable.type.includes('wild')?COLORS[Math.floor(Math.random()*4)]:null);
+    }else{game.drawCard(game.current);}
+    renderAll();
+  }
+}
+
+</script>
+</body>
+</html>
